@@ -8,17 +8,25 @@ from app.db import SessionLocal, engine, Base
 from app.models import Symbol, Bar
 from app.clients.binance import get_klines
 
-SYMBOL = "BTCUSDT"   # If binance.us rejects USDT, try: "BTCUSD"
-INTERVAL = "1m"
-LIMIT = 500  # Binance often allows up to 1000
+# crypto pairs to fetch
+SYMBOLS = ["BTCUSDT", "ETHUSDT", "DOGEUSDT"]
+INTERVAL = "1m"   # 1-minute candles
+LIMIT = 900       # max candles to pull at once
+
+def alias_list(symbol: str) -> list:
+    # fallback: try USD if USDT fails
+    alts = [symbol]
+    if symbol.endswith("USDT"):
+        alts.append(symbol.replace("USDT", "USD"))
+    return alts
 
 def rows_from_klines(symbol_id: int, interval: str, klines: Iterable[list]):
-    # Binance kline layout:
-    # 0 openTime(ms), 1 open, 2 high, 3 low, 4 close, 5 volume, 6 closeTime(ms), ...
+    # convert Binance kline array → dict for Bar model
+    # layout: [openTime, open, high, low, close, vol, closeTime, ...]
     for k in klines:
         yield {
             "symbol_id": symbol_id,
-            "ts": int(k[0]),
+            "ts": int(k[0]),           # open time (ms)
             "open": float(k[1]),
             "high": float(k[2]),
             "low": float(k[3]),
@@ -28,44 +36,59 @@ def rows_from_klines(symbol_id: int, interval: str, klines: Iterable[list]):
         }
 
 async def ensure_schema():
+    # make sure tables exist
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
 
 async def upsert_bars(session, rows):
+    # insert rows, skip duplicates on (symbol_id, ts, timeframe)
     data = list(rows)
     if not data:
         return
     stmt = sqlite_insert(Bar).values(data)
-    # SQLite: specify conflict target columns (not constraint name)
     stmt = stmt.on_conflict_do_nothing(index_elements=["symbol_id", "ts", "timeframe"])
     await session.execute(stmt)
     await session.commit()
 
+async def fetch_one_symbol(logical_symbol: str):
+    # handle one symbol (BTCUSDT etc.), with its own DB session
+    async with SessionLocal() as session:
+        last_err = None
+        for sym in alias_list(logical_symbol):
+            try:
+                # get or create Symbol record
+                res = await session.execute(select(Symbol).where(Symbol.symbol == sym))
+                db_sym = res.scalar_one_or_none()
+                if db_sym is None:
+                    db_sym = Symbol(symbol=sym, asset_class="crypto")
+                    session.add(db_sym)
+                    await session.commit()
+                    await session.refresh(db_sym)
+
+                # fetch klines from Binance
+                klines = await get_klines(sym, INTERVAL, LIMIT)
+
+                # save to DB
+                await upsert_bars(session, rows_from_klines(db_sym.id, INTERVAL, klines))
+
+                # check how many bars stored
+                count_res = await session.execute(
+                    select(Bar).where(Bar.symbol_id == db_sym.id, Bar.timeframe == INTERVAL)
+                )
+                bars = count_res.scalars().all()
+                print(f"Bars stored for {sym} ({INTERVAL}): {len(bars)}")
+                return
+            except Exception as e:
+                last_err = e
+                # if failed, try fallback alias
+                continue
+        print(f"Failed to fetch any of: {', '.join(alias_list(logical_symbol))}  -> {last_err!r}")
+
 async def main():
     await ensure_schema()
-
-    async with SessionLocal() as s:
-        # ensure symbol exists
-        res = await s.execute(select(Symbol).where(Symbol.symbol == SYMBOL))
-        sym = res.scalar_one_or_none()
-        if sym is None:
-            sym = Symbol(symbol=SYMBOL, asset_class="crypto")
-            s.add(sym)
-            await s.commit()
-            await s.refresh(sym)
-
-        # fetch klines
-        klines = await get_klines(SYMBOL, INTERVAL, LIMIT)
-
-        # upsert bars
-        await upsert_bars(s, rows_from_klines(sym.id, INTERVAL, klines))
-
-        # quick count
-        count_res = await s.execute(
-            select(Bar).where(Bar.symbol_id == sym.id, Bar.timeframe == INTERVAL)
-        )
-        bars = count_res.scalars().all()
-        print(f"Bars stored for {SYMBOL} ({INTERVAL}): {len(bars)}")
+    # loop through symbols one by one
+    for sym in SYMBOLS:
+        await fetch_one_symbol(sym)
 
 if __name__ == "__main__":
     asyncio.run(main())
