@@ -26,3 +26,13 @@ class Bar(Base):
     __table_args__ = (
         UniqueConstraint("symbol_id", "ts", "timeframe", name="uq_bar_symbol_ts_tf"),
     )
+    
+class Position(Base):
+    __tablename__ = "positions"  # current holdings
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)      # row id
+    symbol_id: Mapped[int] = mapped_column(ForeignKey("symbols.id"), index=True)
+    qty: Mapped[float] = mapped_column(Float, default=0.0)          # units
+    avg_price: Mapped[float] = mapped_column(Float, default=0.0)    # entry avg
+
+    __table_args__ = (UniqueConstraint("symbol_id", name="uq_pos_symbol"),)    
