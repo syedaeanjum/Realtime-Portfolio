@@ -36,3 +36,15 @@ class Position(Base):
     avg_price: Mapped[float] = mapped_column(Float, default=0.0)    # entry avg
 
     __table_args__ = (UniqueConstraint("symbol_id", name="uq_pos_symbol"),)    
+from sqlalchemy import Integer, Float, BigInteger
+from sqlalchemy.orm import Mapped, mapped_column
+
+class PortfolioSnapshot(Base):
+    __tablename__ = "portfolio_snapshots"  # time series of portfolio state
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)     # row id
+    ts: Mapped[int] = mapped_column(BigInteger, index=True)        # timestamp (ms)
+    equity: Mapped[float] = mapped_column(Float)                   # cash + unrealized
+    cash: Mapped[float] = mapped_column(Float)                     # cash
+    unrealized: Mapped[float] = mapped_column(Float)               # unrealized P&L
+    exposure: Mapped[float] = mapped_column(Float)                 # sum |position value|

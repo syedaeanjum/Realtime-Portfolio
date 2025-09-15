@@ -12,7 +12,7 @@ from app.clients.binance import get_klines_from
 SYMBOLS = ["BTCUSDT", "ETHUSDT", "DOGEUSDT"]  # pairs to update
 INTERVAL = "1m"                                # candle size
 BATCH_LIMIT = 900                              # candles per API call (<= 1000)
-RUN_FOREVER = True                             # loop every 60s if True
+RUN_FOREVER = False                             # loop every 60s if True
 SLEEP_SECS = 60                                # delay between rounds
 
 def alias_list(s: str) -> List[str]:
