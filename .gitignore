@@ -1,7 +1,21 @@
-.venv/
+cat > .gitignore <<'EOF'
+# Python
 __pycache__/
+*.pyc
+*.pyo
+*.pyd
+*.sqlite*
 *.db
-*.sqlite
+
+# Virtual environments
+.venv/
+
+# Environment files
 .env
-.env.*
+
+# Logs
+logs/
+
+# OS
 .DS_Store
+EOF
