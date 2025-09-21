@@ -1,0 +1,8 @@
+2025-09-21 16:51:36.115 | INFO     | update_binance:update_one_symbol:109 - Updated BTCUSDT (1m): +1 rows
+2025-09-21 16:51:36.176 | INFO     | update_binance:update_one_symbol:109 - Updated ETHUSDT (1m): +1 rows
+2025-09-21 16:51:36.238 | INFO     | update_binance:update_one_symbol:109 - Updated DOGEUSDT (1m): +1 rows
+2025-09-21 16:51:36.331 | INFO     | __main__:run_once:42 - cycle done: equity=6591.66 unreal=5591.66 exposure=13576.66
+2025-09-21 16:52:36.479 | INFO     | update_binance:update_one_symbol:109 - Updated BTCUSDT (1m): +2 rows
+2025-09-21 16:52:36.542 | INFO     | update_binance:update_one_symbol:109 - Updated ETHUSDT (1m): +2 rows
+2025-09-21 16:52:36.618 | INFO     | update_binance:update_one_symbol:109 - Updated DOGEUSDT (1m): +2 rows
+2025-09-21 16:52:36.702 | INFO     | __main__:run_once:42 - cycle done: equity=6591.66 unreal=5591.66 exposure=13576.66

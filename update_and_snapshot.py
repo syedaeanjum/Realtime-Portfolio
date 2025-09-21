@@ -5,6 +5,8 @@ from time import time
 from app.db import engine, Base, SessionLocal
 from app.pnl import compute_pnl
 from app.models import PortfolioSnapshot
+from app.config import CASH
+from app.logging import logger
 
 INTERVAL_SECS = 60  # run every 60s
 CASH = 1000.0       # starting cash (adjust)
@@ -37,7 +39,7 @@ async def run_once():
     async with SessionLocal() as s:
         snap = await compute_pnl(s, cash=CASH)
         await write_snapshot(s, snap)
-        print(f"cycle done: equity={snap['equity']:.2f} unreal={snap['unrealized']:.2f} exposure={snap['exposure']:.2f}")
+        logger.info(f"cycle done: equity={snap['equity']:.2f} unreal={snap['unrealized']:.2f} exposure={snap['exposure']:.2f}")
 
 async def main():
     await ensure_schema()
@@ -45,7 +47,7 @@ async def main():
         try:
             await run_once()
         except Exception as e:
-            print(f"cycle error: {e!r}")
+            logger.exception(f"cycle error: {e!r}")
         await asyncio.sleep(INTERVAL_SECS)
 
 if __name__ == "__main__":

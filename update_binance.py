@@ -7,12 +7,13 @@ from sqlalchemy.dialects.sqlite import insert as sqlite_insert
 from app.db import SessionLocal, engine, Base
 from app.models import Symbol, Bar
 from app.clients.binance import get_klines_from
+from app.config import SYMBOLS, INTERVAL
+from app.logging import logger
 
 # --- config ---
-SYMBOLS = ["BTCUSDT", "ETHUSDT", "DOGEUSDT"]  # pairs to update
-INTERVAL = "1m"                                # candle size
+
 BATCH_LIMIT = 900                              # candles per API call (<= 1000)
-RUN_FOREVER = True                             # loop every 60s if True
+RUN_FOREVER = False                             # loop every 60s if True
 SLEEP_SECS = 60                                # delay between rounds
 
 def alias_list(s: str) -> List[str]:
@@ -105,7 +106,7 @@ async def update_one_symbol(logical_symbol: str):
             if inserted == 0 or len(kl) < BATCH_LIMIT:
                 break
 
-        print(f"Updated {db_sym.symbol} ({INTERVAL}): +{total} rows")
+        logger.info(f"Updated {db_sym.symbol} ({INTERVAL}): +{total} rows")
 
 async def run_once():
     # one full pass over all symbols
@@ -115,7 +116,7 @@ async def run_once():
             await update_one_symbol(sym)
         except Exception as e:
             # keep going even if one symbol fails
-            print(f"Update error for {sym}: {e!r}")
+            logger.exception(f"Update error for {sym}: {e!r}")
 
 async def main():
     # run once or in a loop

@@ -1,12 +1,14 @@
 import asyncio
 from app.db import SessionLocal, engine, Base
 from app.pnl import compute_pnl
+from app.config import CASH  
 
 async def main():
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
+
     async with SessionLocal() as s:
-        snap = await compute_pnl(s, cash=1000.0)  # can adjust cash
+        snap = await compute_pnl(s, cash=CASH)
         print("Equity:", round(snap["equity"], 2))
         print("Cash:", round(snap["cash"], 2))
         print("Unrealized:", round(snap["unrealized"], 2))
